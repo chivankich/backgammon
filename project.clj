@@ -5,7 +5,7 @@
 ;             :url "http://www.eclipse.org/legal/epl-v10.html"}
 ;   :dependencies [[org.clojure/clojure "1.4.0"]])
 
-(def board (atom {1 [0, 0]
+(def board (atom {1 []
                   2 []
                   3 [1, 1]
                   4 [1]
@@ -16,7 +16,7 @@
                   9 []
                   10 []
                   11 []
-                  12 [0, 0, 0, 0, 0]
+                  12 []
                   13 [1, 1, 1, 1, 1]
                   14 []
                   15 []
@@ -24,9 +24,9 @@
                   17 []
                   18 [0, 0, 0, 0, 0]
                   19 []
-                  20 [0, 0, 0]
-                  21 []
-                  22 []
+                  20 [0]
+                  21 [1]
+                  22 [0, 0, 0]
                   23 []
                   24 [1, 1]
                   :waiting-black []
@@ -145,13 +145,42 @@
         (println "White! You have " (first dice) "and " (second dice))
         (println "Sorry, but you can't pop any of your fuckin' pulls! :("))))
 
-(defn is-there-behind? [from]
-  (for [pull (range 20 from)]
-    (if ())
-(defn out-of-play-white [from real-number]
-  (let [number (+ 18 real-number)]
-    (if-not (and (empty? (@board from)) ()
-      ()
+(defn all-white-prepared? []
+  (let [amount (apply + (for [pulls (range 20 25)]
+                          (if (white? pulls)
+                            (count (@board pulls))
+                            0)))]
+    (if (= amount 15)
+      true
+      false)))
+
+(defn is-there-behind-white? [from]
+  (if (<= from 20)
+    false
+      (reduce #(or %1 %2) (for [pull (range 20 from)]
+                            (if (or
+                                  (empty? (@board pull))
+                                  (black? pull))
+                              false true)))))
+
+(defn try-pulling-out-white [from with]
+  (let [to (+ from with)]
+    (cond
+      (= 25 to)
+        (swap! board assoc from (pop (@board from)))
+      (> 25 to)
+        (move from with)
+      (< 25 to)
+        (if-not (is-there-behind-white? from)
+          (swap! board assoc from (pop (@board from)))))))
+
+
+
+
+; (defn out-of-play-white [from real-number]
+;   (let [number (+ 18 real-number)]
+;     (if-not (and (empty? (@board from)) ()
+;       ()
 
 
 
@@ -174,17 +203,4 @@
       (white-out dice))))
 
 
-
-
-
-
-; (move 24 1)
-; (move 20 3)
-;(move 23 1)
-;(move 24 1)
-;(move 23 1)
-;(prn @board)
-
-(doseq [u (range 100)]
-  (prn @board)
-  (turn-white))
+(prn (is-there-behind-white? 22))
