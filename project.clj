@@ -1,27 +1,4 @@
-; (defproject backgammon "0.1.0-SNAPSHOT"
-;   :description "FIXME: write description"
-;   :url "http://example.com/FIXME"
-;   :license {:name "Eclipse Public License"
-;             :url "http://www.eclipse.org/legal/epl-v10.html"}
-;   :dependencies [[org.clojure/clojure "1.4.0"]])
-
-(defn calculate [coll1 coll2]
-  (let [value1 (cond
-                (= (count coll1) 0)
-                  0
-                (= (count coll1) 1)
-                  1
-                :else
-                  (+ (count coll1) (- (count coll1) 1)))
-        value2 (cond
-                (= (count coll2) 0)
-                  0
-                (= (count coll2) 1)
-                  1
-                :else
-                  (+ (count coll2) (- (count coll2) 1)))
-        value3 (- 47 (+ value1 value2))]
-    (clojure.string/join (repeat value3 " "))))
+(declare turn-black turn-white)
 
 (def board (atom {1 [0, 0]
                   2 []
@@ -50,7 +27,27 @@
                   :waiting-black []
                   :waiting-white []}))
 
-(declare turn-black turn-white)
+(def available-moves-white (atom {}))
+
+(def available-moves-black (atom {}))
+
+(defn calculate [coll1 coll2]
+  (let [value1 (cond
+                (= (count coll1) 0)
+                  0
+                (= (count coll1) 1)
+                  1
+                :else
+                  (+ (count coll1) (- (count coll1) 1)))
+        value2 (cond
+                (= (count coll2) 0)
+                  0
+                (= (count coll2) 1)
+                  1
+                :else
+                  (+ (count coll2) (- (count coll2) 1)))
+        value3 (- 47 (+ value1 value2))]
+    (clojure.string/join (repeat value3 " "))))
 
 (defn show []
   (println)
@@ -74,6 +71,10 @@
   (println "White out: " (@board :waiting-white))
   (println "Black out: " (@board :waiting-black)))
 
+(defn roll-dice []
+  (let [dice1 (+ (rand-int 6) 1)
+        dice2 (+ (rand-int 6) 1)]
+    [dice1 dice2]))
 
 (defn black? [pulls]
   (if (= (first (@board pulls)) 1)
@@ -86,12 +87,16 @@
 (defn free-for-white []
   (filter (complement nil?) (for [position (map inc (range 6))]
                               (let [pull (first (@board position))]
-                                (if (or (= 0 pull) (nil? pull) (and (= 1 (count (@board position))) (= 1 pull)))
+                                (if (or (= 0 pull)
+                                    (nil? pull)
+                                    (and (= 1 (count (@board position))) (= 1 pull)))
                                   position)))))
 (defn free-for-black []
   (filter (complement nil?) (for [position (map inc (range 6))]
                               (let [pull (first (@board (- 25 position)))]
-                                (if (or (= 1 pull) (nil? pull) (and (= 1 (count (@board (- 25 position)))) (= 0 pull)))
+                                (if (or (= 1 pull)
+                                    (nil? pull)
+                                    (and (= 1 (count (@board (- 25 position)))) (= 0 pull)))
                                   position)))))
 
 (defn is-in? [number coll]
@@ -159,18 +164,16 @@
       (let [to (- from with)
             new-config-to (conj (@board to) (first (@board from)))
             new-config-from (pop (@board from))]
-      (do
         (swap! board assoc to new-config-to)
-        (swap! board assoc from new-config-from)))
+        (swap! board assoc from new-config-from))
     (or
       (and (white? from) (white? (+ from with)))
       (and (white? from) (empty? (@board (+ from with)))))
     (let [to (+ from with)
           new-config-to (conj (@board to) (first (@board from)))
           new-config-from (pop (@board from))]
-      (do
-        (swap! board assoc to new-config-to)
-        (swap! board assoc from new-config-from)))))
+      (swap! board assoc to new-config-to)
+      (swap! board assoc from new-config-from))))
 
 (defn try-pulling-out-white [from with]
   (let [to (+ from with)]
@@ -259,11 +262,11 @@
     (cond
       (empty? (white-available with))
         (do
-          (println "Sorry, but you can't do any moves... (such a loser!)")
+          (println "Sorry, but you can't do any moves...")
           -1)
       (not (is-in? pull (white-available with)))
         (do
-          (println "Your choice is not correct! Oh my godness...")
+          (println "!!! Your choice is not correct! !!!")
           (correct-choice-white with))
       :else
         pull)))
@@ -297,87 +300,125 @@
     (cond
       (empty? (black-available with))
         (do
-          (println "Sorry, but you can't do any moves... (such a loser!)")
+          (println "Sorry, but you can't do any moves...")
           -1)
       (not (is-in? pull (black-available with)))
         (do
-          (println "Your choice is not correct! Apffff....")
+          (println "!!! Your choice is not correct! !!!")
           (correct-choice-black with))
       :else
         pull)))
 
-(defn roll-dice []
-  (let [dice1 (+ (rand-int 6) 1)
-        dice2 (+ (rand-int 6) 1)]
-    [dice1 dice2]))
-
-(defn out-white-with [number]
+(defn back-in-the-game-white [number]
   (if (black? number)
     (let [to (@board number)
           new-configure-to (vec [0])
           new-configure-from (pop (@board :waiting-white))
           new-configure-to-black (conj (@board :waiting-black) (first to))]
-      (do
-        (swap! board assoc number new-configure-to)
-        (swap! board assoc :waiting-white new-configure-from)
-        (swap! board assoc :waiting-black new-configure-to-black)))
+      (swap! board assoc number new-configure-to)
+      (swap! board assoc :waiting-white new-configure-from)
+      (swap! board assoc :waiting-black new-configure-to-black))
   (let [new-configure-to (conj (@board number) 0)
         new-configure-from (pop (@board :waiting-white))]
-    (do
-      (swap! board assoc number new-configure-to)
-      (swap! board assoc :waiting-white new-configure-from)))))
+    (swap! board assoc number new-configure-to)
+    (swap! board assoc :waiting-white new-configure-from))))
 
-(defn out-black-with [number]
+(defn back-in-the-game-black [number]
   (if (white? (- 25 number))
     (let [to (@board (- 25 number))
           new-configure-to (vec [1])
           new-configure-from (pop (@board :waiting-black))
           new-configure-to-white (conj (@board :waiting-white) (first to))]
-      (do
-        (swap! board assoc (- 25 number) new-configure-to)
-        (swap! board assoc :waiting-black new-configure-from)
-        (swap! board assoc :waiting-white new-configure-to-white)))
+      (swap! board assoc (- 25 number) new-configure-to)
+      (swap! board assoc :waiting-black new-configure-from)
+      (swap! board assoc :waiting-white new-configure-to-white))
   (let [new-configure-to (conj (@board (- 25 number)) 1)
         new-configure-from (pop (@board :waiting-black))]
+    (swap! board assoc (- 25 number) new-configure-to)
+    (swap! board assoc :waiting-black new-configure-from))))
+
+(defn black-win-check []
+  (if (black-win?)
     (do
-      (swap! board assoc (- 25 number) new-configure-to)
-      (swap! board assoc :waiting-black new-configure-from)))))
+      (println "=====================================================")
+      (println "|   Congratulations, Black! You are the winner! :)  |")
+      (println "====================================================="))
+    (turn-white)))
+
+(defn white-win-check []
+  (if (white-win?)
+    (do
+      (println "=====================================================")
+      (println "|   Congratulations, White! You are the winner! :)  |")
+      (println "====================================================="))
+    (turn-black)))
+
+(defn pair? [dice]
+  (= (first dice) (second dice)))
+
+(defn correct-choice []
+  (let [choice (read)]
+    (if-not (or (= choice 1) (= choice 2))
+      (do
+        (println "!!! Please, choose between 1 and 2! Try again...!!!")
+        (correct-choice))
+      choice)))
 
 (defn move-empty-waiting-white [dice]
   (println "=====================================================")
-  (println "White! You have " (first dice) "and " (second dice))
-  (println "Please, select a pull for the first dice, man: ")
-  (let [pull (correct-choice-white (first dice))]
-    (if-not (= pull -1)
-      (if (all-white-prepared?)
-        (try-pulling-out-white pull (first dice))
-        (move pull (first dice)))
-      (println "You can't do any moves... (loser!)")))
-  (println "And now select a pull for the second dice, dude: ")
-  (let [pull (correct-choice-white (second dice))]
-    (if-not (= pull -1)
-      (if (all-white-prepared?)
-        (try-pulling-out-white pull (second dice))
-        (move pull (second dice)))
-      (println "You can't do any moves... (loser!)"))))
+  (println "White! You have |"(first dice)"| and |"(second dice)"|")
+  (println "Please, type 1 for |"(first dice)"| and 2 for |"(second dice)"| ...")
+  (let [choice1 (correct-choice)
+        number (@available-moves-white choice1)]
+    (println "And now select a pull for the |"number"|")
+    (let [pull (correct-choice-white number)]
+      (if-not (= pull -1)
+        (if (all-white-prepared?)
+          (try-pulling-out-white pull number)
+          (move pull number))
+        (println "You can't do any moves...")))
+    (if-not (@available-moves-white :pair)
+      (swap! available-moves-white dissoc choice1)))
+  (let [choice2 (first (vals @available-moves-white))]
+    (println "And now select a pull for the second dice, that's" choice2)
+    (let [pull (correct-choice-white choice2)]
+      (if-not (= pull -1)
+        (if (all-white-prepared?)
+          (try-pulling-out-white pull choice2)
+          (move pull choice2))
+        (println "You can't do any moves..."))))
+  (if-not (@available-moves-white :pair)
+    (swap! available-moves-white dissoc (first (keys @available-moves-white))))
+  (swap! available-moves-white dissoc :pair))
 
 (defn move-empty-waiting-black [dice]
   (println "=====================================================")
-  (println "Black! You have " (first dice) "and " (second dice))
-  (println "Please, select a pull for the first dice, man: ")
-  (let [pull (correct-choice-black (first dice))]
-    (if-not (= pull -1)
-      (if (all-black-prepared?)
-        (try-pulling-out-black pull (first dice))
-        (move pull (first dice)))
-      (println "You can't do any moves... (loser!)")))
-  (println "And now select a pull for the second dice, dude: ")
-  (let [pull (correct-choice-black (second dice))]
-    (if-not (= pull -1)
-      (if (all-black-prepared?)
-        (try-pulling-out-black pull (second dice))
-        (move pull (second dice)))
-      (println "You can't do any moves... (loser!)"))))
+  (println "Black! You have |"(first dice)"| and |"(second dice)"|")
+  (swap! available-moves-black assoc 1 (first dice))
+  (swap! available-moves-black assoc 2 (second dice))
+  (println "Please, type 1 for |"(first dice)"| and 2 for |"(second dice)"| ...")
+  (let [choice1 (correct-choice)
+        number (@available-moves-black choice1)]
+    (println "And now select a pull for the |"number"|")
+    (let [pull (correct-choice-black number)]
+      (if-not (= pull -1)
+        (if (all-black-prepared?)
+          (try-pulling-out-black pull number)
+          (move pull number))
+        (println "You can't do any moves...")))
+    (if-not (@available-moves-black :pair)
+      (swap! available-moves-black dissoc choice1)))
+  (let [choice2 (first (vals @available-moves-black))]
+    (println "And now select a pull for the second dice, that's |"choice2"|")
+    (let [pull (correct-choice-black choice2)]
+      (if-not (= pull -1)
+        (if (all-black-prepared?)
+          (try-pulling-out-black pull choice2)
+          (move pull choice2))
+        (println "You can't do any moves..."))))
+  (if-not (@available-moves-black :pair)
+    (swap! available-moves-black dissoc (first (keys @available-moves-white))))
+  (swap! available-moves-black dissoc :pair))
 
 (defn white-out [dice]
   (cond
@@ -387,40 +428,91 @@
       (is-in? (first dice) (free-for-white))
       (is-in? (second dice) (free-for-white))
       (< 1 (count (@board :waiting-white))))
-        (do
-          (println "=====================================================")
-          (println "White! You have " (first dice) "and " (second dice))
-          (println "Well, you have to use both numbers to pop pulls! Let's do it!")
-          (out-white-with (first dice))
-          (out-white-with (second dice)))
-    (and (is-in? (first dice) (free-for-white)) (= 1 (count (@board :waiting-white))))
       (do
         (println "=====================================================")
-        (println "White! You have " (first dice) "and " (second dice))
-        (println "You use the first number to pop your pull! Yeah!")
-        (out-white-with (first dice))
-        (println "Well, select a pull for your fuckin' " (second dice) "(Second number)")
+        (println "White! You have |"(first dice)"| and |"(second dice)"|")
+        (println "Well, you have to use both numbers to pop pulls! Let's do it!")
+        (println "Choose 1 or 2 to pop out one of the frozen pulls!")
+        (let [choice1 (correct-choice)
+              number1 (@available-moves-white choice1)]
+          (back-in-the-game-white number1)
+          (if-not (@available-moves-white :pair)
+            (swap! available-moves-white dissoc choice1)))
+        (println "Now, choose a pull for your second frozen pull!")
+        (let [number2 (first (vals (@available-moves-white)))]
+          (back-in-the-game-white number2)
+          (if-not (@available-moves-white :pair)
+            (swap! available-moves-white dissoc (first (keys (@available-moves-white))))))
+        (swap! available-moves-white dissoc :pair))
+    (and
+      (is-in? (first dice) (free-for-white))
+      (is-in? (second dice) (free-for-white))
+      (= 1 (count (@board :waiting-white))))
+      (do
+        (println "=====================================================")
+        (println "White! You have |"(first dice)"| and |"(second dice)"|, choose 1 or 2 to pop out the pull!")
+        (let [choice1 (correct-choice)
+              number1 (@available-moves-white choice1)]
+          (back-in-the-game-white number1)
+          (if-not (@available-moves-white :pair)
+            (swap! available-moves-white dissoc choice1)))
+        (let [choice2 (first (vals @available-moves-white))]
+          (println "Well, select a pull for your |"choice2"|")
+          (let [pull (correct-choice-white choice2)]
+            (if-not (= pull -1)
+              (move pull choice2)
+              (println "You can't do any moves...")))
+          (if-not (@available-moves-white :pair)
+            (swap! available-moves-white dissoc (first (keys @available-moves-white))))
+          (swap! available-moves-white dissoc :pair)))
+    (and
+      (is-in? (first dice) (free-for-white))
+      (not (is-in? (second dice) (free-for-white)))
+      (<= 1 (count (@board :waiting-white))))
+      (do
+        (println "=====================================================")
+        (println "White! You have |"(first dice)"| and |"(second dice)"|")
+        (println "You use the FIRST number to pop out your pull! Yeah!")
+        (back-in-the-game-white (first dice))
+        (println "Well, select a pull for your |"(second dice)"|")
         (let [pull (correct-choice-white (second dice))]
           (if-not (= pull -1)
-            (move pull (second dice)))))
-    (and (is-in? (second dice) (free-for-white)) (= 1 (count (@board :waiting-white))))
+            (move pull (second dice))
+            (println "You can't do any moves...")))
+        (if-not (@available-moves-white :pair)
+          (do
+            (swap! available-moves-white dissoc 1)
+            (swap! available-moves-white dissoc 2)))
+        (swap! available-moves-white dissoc :pair))
+    (and
+      (is-in? (second dice) (free-for-white))
+      (not (is-in? (first dice) (free-for-white)))
+      (<= 1 (count (@board :waiting-white))))
       (do
         (println "=====================================================")
-        (println "White! You have " (first dice) "and " (second dice))
-        (println "You use the second number to pop out your pull! Yeah!")
-        (out-white-with (second dice))
-        (println "Well, select a pull for your " (first dice) "(First number)")
+        (println "White! You have |"(first dice)"| and |"(second dice)"|")
+        (println "You use the SECOND number to pop out your pull! Yeah!")
+        (back-in-the-game-white (second dice))
+        (println "Well, select a pull for your |"(first dice)"|")
         (let [pull (correct-choice-white (first dice))]
           (if-not (= pull -1)
-            (move pull (first dice)))))
+            (move pull (first dice))
+            (println "You can't do any moves...")))
+        (if-not (@available-moves-white :pair)
+          (do
+            (swap! available-moves-white dissoc 1)
+            (swap! available-moves-white dissoc 2)))
+        (swap! available-moves-white dissoc :pair))
     :else
       (do
         (println "=====================================================")
-        (println "White! You have " (first dice) "and " (second dice))
-        (println "Sorry, but you can't pop any of your fuckin' pulls! :("))))
-
-(defn pair? [dice]
-  (= (first dice) (second dice)))
+        (println "White! You have |"(first dice)"| and |"(second dice)"|")
+        (println "Sorry, but you can't pop any of your pulls! :(")
+        (if-not (@available-moves-white :pair)
+          (do
+            (swap! available-moves-white dissoc 1)
+            (swap! available-moves-white dissoc 2)))
+        (swap! available-moves-white dissoc :pair))))
 
 (defn black-out [dice]
   (cond
@@ -430,40 +522,98 @@
       (is-in? (first dice) (free-for-black))
       (is-in? (second dice) (free-for-black))
       (< 1 (count (@board :waiting-black))))
-        (do
-          (println "=====================================================")
-          (println "Blacks! You have " (first dice) "and " (second dice))
-          (println "Well, you have to use both numbers to pop pulls! Let's do it!")
-          (out-black-with (first dice))
-          (out-black-with (second dice)))
-    (and (is-in? (first dice) (free-for-black)) (= 1 (count (@board :waiting-black))))
       (do
         (println "=====================================================")
-        (println "Blacks! You have " (first dice) "and " (second dice))
-        (println "You use the first number to pop your pull! Yeah!")
-        (out-black-with (first dice))
-        (println "Well, select a pull for your " (second dice) "(Second number)")
+        (println "Black! You have |"(first dice)"| and |"(second dice)"|")
+        (println "Well, you have to use both numbers to pop pulls! Let's do it!")
+        (println "Choose 1 or 2 to pop out one of the frozen pulls!")
+        (let [choice1 (correct-choice)
+              number1 (@available-moves-black choice1)]
+          (back-in-the-game-black number1)
+          (if-not (@available-moves-black :pair)
+            (swap! available-moves-black dissoc choice1)))
+        (println "Now, choose a pull for your second frozen pull!")
+        (let [number2 (first (vals (@available-moves-black)))]
+          (back-in-the-game-black number2)
+          (if-not (@available-moves-black :pair)
+            (swap! available-moves-black dissoc (first (keys (@available-moves-black))))))
+        (swap! available-moves-black dissoc :pair))
+    (and
+      (is-in? (first dice) (free-for-black))
+      (is-in? (second dice) (free-for-black))
+      (= 1 (count (@board :waiting-black))))
+      (do
+        (println "=====================================================")
+        (println "Black! You have |"(first dice)"| and |"(second dice)"|, choose 1 or 2 to pop out the pull!")
+        (let [choice1 (correct-choice)
+              number1 (@available-moves-black choice1)]
+          (back-in-the-game-black number1)
+          (if-not (@available-moves-black :pair)
+            (swap! available-moves-black dissoc choice1)))
+        (let [choice2 (first (vals @available-moves-black))]
+          (println "Well, select a pull for your |"choice2"|")
+          (let [pull (correct-choice-black choice2)]
+            (if-not (= pull -1)
+              (move pull choice2)
+              (println "You can't do any moves...")))
+          (if-not (@available-moves-black :pair)
+            (swap! available-moves-black dissoc (first (keys @available-moves-black))))
+          (swap! available-moves-black dissoc :pair)))
+    (and
+      (is-in? (first dice) (free-for-black))
+      (not (is-in? (second dice) (free-for-black)))
+      (<= 1 (count (@board :waiting-black))))
+      (do
+        (println "=====================================================")
+        (println "Black! You have |"(first dice)"| and |"(second dice)"|")
+        (println "You use the FIRST number to pop out your pull! Yeah!")
+        (back-in-the-game-black (first dice))
+        (println "Well, select a pull for your |"(second dice)"|")
         (let [pull (correct-choice-black (second dice))]
           (if-not (= pull -1)
-            (move pull (second dice)))))
-    (and (is-in? (second dice) (free-for-black)) (= 1 (count (@board :waiting-black))))
+            (move pull (second dice))
+            (println "You can't do any moves...")))
+        (if-not (@available-moves-black :pair)
+          (do
+            (swap! available-moves-black dissoc 1)
+            (swap! available-moves-black dissoc 2)))
+        (swap! available-moves-black dissoc :pair))
+    (and
+      (is-in? (second dice) (free-for-black))
+      (not (is-in? (first dice) (free-for-black)))
+      (<= 1 (count (@board :waiting-black))))
       (do
         (println "=====================================================")
-        (println "Blacks! You have " (first dice) "and " (second dice))
-        (println "You use the second number to pop out your pull! Yeah!")
-        (out-black-with (second dice))
-        (println "Well, select a pull for your " (first dice) "(First number)")
+        (println "Black! You have |"(first dice)"| and |"(second dice)"|")
+        (println "You use the SECOND number to pop out your pull! Yeah!")
+        (back-in-the-game-black (second dice))
+        (println "Well, select a pull for your |"(first dice)"|")
         (let [pull (correct-choice-black (first dice))]
           (if-not (= pull -1)
-            (move pull (first dice)))))
+            (move pull (first dice))
+            (println "You can't do any moves...")))
+        (if-not (@available-moves-black :pair)
+          (do
+            (swap! available-moves-black dissoc 1)
+            (swap! available-moves-black dissoc 2)))
+        (swap! available-moves-black dissoc :pair))
     :else
       (do
         (println "=====================================================")
-        (println "Blacks! You have " (first dice) "and " (second dice))
-        (println "Sorry, but you can't pop any of your fuckin' pulls! :("))))
+        (println "Black! You have |"(first dice)"| and |"(second dice)"|")
+        (println "Sorry, but you can't pop any of your pulls! :(")
+        (if-not (@available-moves-black :pair)
+          (do
+            (swap! available-moves-black dissoc 1)
+            (swap! available-moves-black dissoc 2)))
+        (swap! available-moves-black dissoc :pair))))
 
 (defn turn-white []
   (let [dice (roll-dice)]
+    (if (pair? dice)
+      (swap! available-moves-white assoc :pair true))
+    (swap! available-moves-white assoc 1 (first dice))
+    (swap! available-moves-white assoc 2 (second dice))
     (cond
       (and
         (empty? (@board :waiting-white))
@@ -472,18 +622,14 @@
         (show)
         (dotimes [_ 2]
           (move-empty-waiting-white dice))
-        (if (white-win?)
-          (println "Congratulations, Whites! You are the fuckin' winner! :)")
-          (turn-black)))
+        (white-win-check))
       (and
         (empty? (@board :waiting-white))
         (not (pair? dice)))
       (do
         (show)
         (move-empty-waiting-white dice)
-        (if (white-win?)
-          (println "Congratulations, Whites! You are the fuckin' winner! :)")
-          (turn-black)))
+        (white-win-check))
       (and
         (not (empty? (@board :waiting-white)))
         (pair? dice))
@@ -491,21 +637,21 @@
         (show)
         (dotimes [_ 2]
           (white-out dice))
-        (if (white-win?)
-          (println "Congratulations, Whites! You are the fuckin' winner! :)")
-          (turn-black)))
+        (white-win-check))
       (and
         (not (empty? (@board :waiting-white)))
         (not (pair? dice)))
       (do
         (show)
         (white-out dice)
-        (if (white-win?)
-            (println "Congratulations, Whites! You are the fuckin' winner! :)")
-            (turn-black))))))
+        (white-win-check)))))
 
 (defn turn-black []
   (let [dice (roll-dice)]
+    (if (pair? dice)
+      (swap! available-moves-black assoc :pair true))
+    (swap! available-moves-black assoc 1 (first dice))
+    (swap! available-moves-black assoc 2 (second dice))
     (cond
       (and
         (empty? (@board :waiting-black))
@@ -514,18 +660,14 @@
         (show)
         (dotimes [_ 2]
           (move-empty-waiting-black dice))
-        (if (black-win?)
-          (println "Congratulations, Blacks! You are the fuckin' winner! :)")
-          (turn-white)))
+        (black-win-check))
       (and
         (empty? (@board :waiting-black))
         (not (pair? dice)))
       (do
         (show)
         (move-empty-waiting-black dice)
-        (if (black-win?)
-          (println "Congratulations, Blacks! You are the fuckin' winner! :)")
-          (turn-white)))
+        (black-win-check))
       (and
         (not (empty? (@board :waiting-black)))
         (pair? dice))
@@ -533,17 +675,13 @@
         (show)
         (dotimes [_ 2]
           (black-out dice))
-        (if (black-win?)
-          (println "Congratulations, Blacks! You are the fuckin' winner! :)")
-          (turn-white)))
+        (black-win-check))
       (and
         (not (empty? (@board :waiting-black)))
         (not (pair? dice)))
       (do
         (show)
         (black-out dice)
-        (if (black-win?)
-            (println "Congratulations, Blacks! You are the fuckin' winner! :)")
-            (turn-white))))))
+        (black-win-check)))))
 
 (turn-white)
