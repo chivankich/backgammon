@@ -1,13 +1,7 @@
-# backgammon
+# Backgammon
 
-A Clojure library designed to ... well, that part is up to you.
+Backgammon is one of the oldest board games for two players. The playing pieces are moved according to the roll
+of dice, and a player wins by removing all of his pieces from the board before his opponent. There are many 
+variants of backgammon, most of which share common traits.
 
-## Usage
-
-FIXME
-
-## License
-
-Copyright © 2013 FIXME
-
-Distributed under the Eclipse Public License, the same as Clojure.
+Backgammon is a member of the tables family, one of the oldest classes of board games in the world.
