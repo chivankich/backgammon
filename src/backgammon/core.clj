@@ -1,6 +1,16 @@
-(ns backgammon.core)
+(ns backgammon.core
+  (:gen-class)
+  (:use backgammon.init_game
+        backgammon.generic_methods
+        backgammon.move
+        backgammon.choices
+        backgammon.io
+        backgammon.artificial_intelligence
+        backgammon.preparation
+        backgammon.turns))
 
-(defn foo
-  "I don't do a whole lot."
-  [x]
-  (println x "Hello, World!"))
+(defn -main [& args]
+  (question)
+  (black-or-white?))
+
+
