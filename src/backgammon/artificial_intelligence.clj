@@ -113,7 +113,7 @@
           (back-in-the-game :black choice1))
         (let [sec (second dice)]
           (println "And now Black chosed their second dice!")
-          (let [pull (correct-choice-black-cpu)]
+          (let [pull (correct-choice-black-cpu (second dice))]
             (if-not (= pull -1)
               (move pull sec)
               (println "You can't do any moves..."))))
@@ -130,7 +130,7 @@
         (println "They use the FIRST number to pop out their pull! Yeah!")
         (back-in-the-game :black (first dice))
         (println "Well, now they select a pull for their |"(second dice)"|")
-        (let [pull (correct-choice-black-cpu)]
+        (let [pull (correct-choice-black-cpu (second dice))]
           (if-not (= pull -1)
             (move pull (second dice))
             (println "You can't do any moves...")))
@@ -147,7 +147,7 @@
         (println "They use the SECOND number to pop out their pull! Yeah!")
         (back-in-the-game :black (second dice))
         (println "Well, they select a pull for their |"(first dice)"|")
-        (let [pull (correct-choice-black-cpu)]
+        (let [pull (correct-choice-black-cpu (first dice))]
           (if-not (= pull -1)
             (move pull (first dice))
             (println "You can't do any moves...")))
