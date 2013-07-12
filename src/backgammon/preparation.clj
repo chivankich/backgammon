@@ -11,7 +11,7 @@
   (println "=====================================================")
   (println "Do you want to play against CPU? (0 / 1)")
   (let [q (read)]
-    (if (= 1 q)
+    (if (= q 1)
       (swap! versus-cpu? (fn [_] true))
       (if-not (= 0 q)
         (do

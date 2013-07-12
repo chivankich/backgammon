@@ -1,6 +1,6 @@
 (ns backgammon.generic_methods
   (:gen-class)
-  (:use backgammon.init))
+  (:use backgammon.init_game))
 
 (defn calculate [coll1 coll2]
   (let [value1 (cond

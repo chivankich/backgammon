@@ -16,7 +16,7 @@
                 :waiting-black [] :waiting-white []})
 
 (deftest calculate-test
-	(is (= (calculate [0 1 2] [2 3 4]) "                                     ")))
+  (is (= (calculate [0 1 2] [2 3 4]) "                                     ")))
 
 (deftest black-pulls-test
   (is (= (black? 24)) true)
@@ -48,6 +48,11 @@
   (is (= (is-there-behind? :black 24)) false)
   (is (= (is-there-behind? :black 1)) true))
 
+(deftest choose-the-best-one-test
+  (store-the-best [8 13] 5)
+  (is (= (choose-the-best-one) 13))
+  (swap! possible (fn [_] {})))
+
 (deftest moves-test
   (let [result1 {1 [0] 2 [] 3 [] 4 [] 5 [0] 6 [1, 1, 1, 1, 1] 7 [] 8 [1, 1, 1] 9 []
                  10 [] 11 [] 12 [0, 0, 0, 0, 0] 13 [1, 1, 1, 1, 1] 14 [] 15 [] 16 []
@@ -63,13 +68,13 @@
                  :waiting-black [] :waiting-white []}]
     (move 1 4)
     (is (= @board result1))
-    (reset! board original)
+    (swap! board (fn [_] original))
     (move 13 5)
     (is (= @board result2))
-    (reset! board original)
+    (swap! board (fn [_] original))
     (move 12 2)
     (is (= @board result3))
-    (reset! board original)))
+    (swap! board (fn [_] original))))
 
 (deftest win-test
   (is (= (win? :white) false))
@@ -86,6 +91,42 @@
   (is (= (available :white 1) '(1 17 19)))
   (is (= (available :black 6) '(8 13 24)))
   (is (= (available :black 1) '(6 8 24))))
+
+(deftest try-pulling-out-test
+  (let [result1 {1 [] 2 [] 3 [] 4 [] 5 [] 6 [1, 1, 1, 1, 1] 7 [] 8 [1, 1, 1, 1, 1] 9 [] 10 []
+                  11 [] 12 [] 13 [1, 1, 1, 1, 1] 14 [] 15 [] 16 [] 17 []
+                  18 [] 19 [0, 0, 0, 0, 0] 20 [] 21 [0, 0, 0] 22 [0, 0] 23 [0, 0, 0] 24 [0]
+                  :waiting-black [] :waiting-white []}
+        result2 {1 [] 2 [] 3 [] 4 [] 5 [] 6 [1, 1, 1, 1, 1] 7 [] 8 [1, 1, 1, 1, 1] 9 [] 10 []
+                  11 [] 12 [] 13 [1, 1, 1, 1, 1] 14 [] 15 [] 16 [] 17 []
+                  18 [] 19 [0, 0, 0, 0] 20 [] 21 [0, 0, 0] 22 [0, 0] 23 [0, 0, 0] 24 [0]
+                  :waiting-black [] :waiting-white []}
+        result3 {1 [1, 1, 1] 2 [1, 1, 1, 1] 3 [1, 1] 4 [1] 5 [] 6 [1, 1, 1, 1, 1] 7 [] 8 [] 9 [] 10 []
+                  11 [] 12 [0, 0, 0, 0, 0] 13 [] 14 [] 15 [] 16 [] 17 [0, 0, 0]
+                  18 [0, 0] 19 [0, 0, 0, 0, 0] 20 [] 21 [] 22 [] 23 [] 24 []
+                  :waiting-black [] :waiting-white []}
+        result4 {1 [1, 1, 1] 2 [1, 1, 1, 1] 3 [1, 1] 4 [] 5 [] 6 [1, 1, 1, 1, 1] 7 [] 8 [] 9 [] 10 []
+                  11 [] 12 [0, 0, 0, 0, 0] 13 [] 14 [] 15 [] 16 [] 17 [0, 0, 0]
+                  18 [0, 0] 19 [0, 0, 0, 0, 0] 20 [] 21 [] 22 [] 23 [] 24 []
+                  :waiting-black [] :waiting-white []}
+        result5 {1 [] 2 [] 3 [] 4 [] 5 [] 6 [1, 1, 1, 1, 1] 7 [] 8 [1, 1, 1, 1, 1] 9 [] 10 []
+                  11 [] 12 [] 13 [1, 1, 1, 1, 1] 14 [] 15 [] 16 [] 17 []
+                  18 [] 19 [] 20 [] 21 [0, 0, 0] 22 [0, 0, 0, 0, 0, 0] 23 [0, 0, 0] 24 [0, 0, 0]
+                  :waiting-black [] :waiting-white []}
+        result6 {1 [] 2 [] 3 [] 4 [] 5 [] 6 [1, 1, 1, 1, 1] 7 [] 8 [1, 1, 1, 1, 1] 9 [] 10 []
+                  11 [] 12 [] 13 [1, 1, 1, 1, 1] 14 [] 15 [] 16 [] 17 []
+                  18 [] 19 [] 20 [] 21 [0, 0] 22 [0, 0, 0, 0, 0, 0] 23 [0, 0, 0] 24 [0, 0, 0]
+                  :waiting-black [] :waiting-white []}]
+    (swap! board (fn [_] result1))
+    (try-pulling-out :white 19 6)
+    (is (= @board result2))
+    (swap! board (fn [_] result3))
+    (try-pulling-out :black 4 4)
+    (is (= @board result4))
+    (swap! board (fn [_] result5))
+    (try-pulling-out :white 21 6)
+    (is (= @board result6))
+    (swap! board (fn [_] original))))
 
 (deftest back-in-the-game-test
   (let [result1 {1 [0] 2 [] 3 [] 4 [] 5 [] 6 [1, 1, 1, 1, 1] 7 [] 8 [1, 1, 1] 9 [] 10 []
@@ -104,13 +145,13 @@
                   11 [] 12 [0, 0, 0, 0, 0] 13 [1, 1, 1, 1, 1] 14 [] 15 [] 16 [] 17 [0, 0, 0]
                   18 [] 19 [0, 0, 0, 0, 0] 20 [] 21 [] 22 [] 23 [1] 24 [1]
                   :waiting-black [] :waiting-white []}]
-    (reset! board result1)
+    (swap! board (fn [_] result1))
     (back-in-the-game :white 4)
     (is (= @board result2))
-    (reset! board result3)
+    (swap! board (fn [_] result3))
     (back-in-the-game :black 2)
     (is (= @board result4))
-    (reset! board original)))
+    (swap! board (fn [_] original))))
 
 (deftest pair-dice-test
   (is (= (pair? [1, 1]) true))
@@ -118,13 +159,3 @@
 
 (deftest random-position-test
   (is (= (is-in? (random-position [1 4 12 17]) [1 4 12 17]) true)))
-
-(deftest store-the-best-test
-  (store-the-best [8 13] 5)
-  (is (= @possible {3 13, 6 8}))
-  (swap! possible (fn [_] {})))
-
-(deftest choose-the-best-one-test
-  (store-the-best [8 13] 5)
-  (is (= (choose-the-best-one) 13))
-  (swap! possible (fn [_] {})))
